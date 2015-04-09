@@ -1,0 +1,15 @@
+################################################################################
+#
+# Node Controller configuration
+#
+
+- name: Configure eucalyptus.conf
+  template: src=eucalyptus.conf.j2 dest={{ euca_conf_file_path }}
+  tags:
+  - euca_config
+
+- name: Remove default libvirt artifacts
+  shell: virsh net-destroy default ; virsh net-undefine default
+
+- name: Restart libvirtd
+  service: name=libvirtd state=restarted

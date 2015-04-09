@@ -1,0 +1,5 @@
+---
+# tasks file for eucalyptus-nc
+
+- include: packages.yml
+- include: init.yml

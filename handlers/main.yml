@@ -1,0 +1,5 @@
+---
+# handlers file for eucalyptus-nc
+
+- name: ntpd start
+  service: name=ntpd state=restarted

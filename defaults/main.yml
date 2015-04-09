@@ -1,0 +1,29 @@
+---
+# defaults file for eucalyptus-nc
+
+bridge_number: 0
+cpu_overcommit: 1
+network_config_path: /etc/sysconfig/network-scripts/
+
+networking_mode: EDGE
+edge_using_private: True
+
+managed_addrpernet: 32
+instance_dns_domain: eucalyptus.internal
+
+
+# Eucalyptus Generic
+
+euca_repo_url: http://downloads.eucalyptus.com/software/eucalyptus/4.1/centos/6/x86_64/eucalyptus-release-4.1.el6.noarch.rpm
+euca2ools_repo_url: http://downloads.eucalyptus.com/software/euca2ools/3.2/centos/6/x86_64/euca2ools-release-3.2.el6.noarch.rpm
+epel_repo_url: http://downloads.eucalyptus.com/software/eucalyptus/4.1/centos/6/x86_64/epel-release-6.noarch.rpm
+elrepo_repo_url: http://downloads.eucalyptus.com/software/eucalyptus/4.0/centos/6/x86_64/elrepo-release-6.noarch.rpm
+
+euca_local_repo_url:
+euca_repo_file: /etc/yum.repos.d/eucalyptus.repo
+euca2ools_local_repo_url:
+euca2ools_repo_file: /etc/yum.repos.d/euca2ools.repo
+
+euca_use_local_repo: False
+euca_images: eucalyptus-service-image
+euca_conf_file_path: /etc/eucalyptus/eucalyptus.conf

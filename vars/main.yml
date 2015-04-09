@@ -1,0 +1,16 @@
+---
+# vars file for eucalyptus-nc
+
+iface_name:
+nc_work_size:
+nc_cache_size:
+
+networking_mode:
+edge_using_private:
+
+vnet_private:
+vnet_public:
+partition:
+vnet_netmask:
+vnet_subnet:
+instance_dns_server:
