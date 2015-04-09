@@ -11,6 +11,7 @@ EUCA_USER="eucalyptus"
 # Extra options to pass to the eucalyptus-cloud process, such as log
 # levels, heap size, or other JVM flags.
 CLOUD_OPTS=""
+
 ###########################################################################
 # STORAGE CONTROLLER (SC) CONFIGURATION
 ###########################################################################
@@ -100,39 +101,52 @@ MAX_CORES="{{ ansible_processor_vcpus * cpu_overcommit }}"
 # The amount of disk space, in megabytes, that the NC is allowed to use
 # in its work directory ($INSTANCE_PATH/eucalyptus/work).  By default
 # the NC chooses automatically.  Values below 10 are ignored.
-{% if not nc_work_size and not nc_cache_size %}
+{% set found = { 'found' : False } %}
 {% for drive in ansible_mounts %}
-{% if drive['mount'] == "/var/lib/eucalyptus" %}
+{% if drive['mount'] == "/var/lib/eucalyptus/instances" %}
 {% set good_drive = drive %}
+{% if found.update({ 'found': True }) %} {% endif %}
 {% set max_drive_mem = good_drive['size_available'] %}
 {% set work_size = max_drive_mem * 0.7 / 1048576 %}
 {% set cache_size = max_drive_mem * 0.25 / 1048576 %}
-WORK_SIZE={{ work_size|int }}
-CACHE_SIZE={{ cache_size|int }}
-{% elif drive['mount'] == "/var" %}
-{% set good_drive = drive %}
-{% set max_drive_mem = good_drive['size_available'] %}
-{% set work_size = max_drive_mem * 0.7 / 1048576 %}
-{% set cache_size = max_drive_mem * 0.25 / 1048576 %}
-WORK_SIZE={{ work_size|int }}
-CACHE_SIZE={{ cache_size|int }}
-{% elif drive['mount'] == "/" %}
-{% set good_drive = drive %}
-{% set max_drive_mem = good_drive['size_available'] %}
-{% set work_size = max_drive_mem * 0.7 / 1048576 %}
-{% set cache_size = max_drive_mem * 0.25 / 1048576 %}
-WORK_SIZE={{ work_size|int }}
-CACHE_SIZE={{ cache_size|int }}
+NC_WORK_SIZE={{ work_size|int }}
+# The amount of disk space, in megabytes, that the NC is allowed to use
+# in its cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
+# the NC chooses automatically.  Values below 10 are ignored.
+NC_CACHE_SIZE={{ cache_size|int }}
 {% endif %}
-{%endfor %}
-{% else %}
-NC_WORK_SIZE="{{ nc_work_size }}"
-# The amount of disk space, in megabytes, that the NC is allowed to use in
-# its image cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
-# the NC chooses automatically.  A value below 10 will disable caching.
-NC_CACHE_SIZE="{{ nc_cache_size }}"
+{% endfor %}
+{% if not found.found %}
+{% for drive in ansible_mounts %}
+{% if drive['mount'] == "/var" %}
+{% set good_drive = drive %}
+{% if found.update({ 'found': True }) %} {% endif %}
+{% set max_drive_mem = good_drive['size_available'] %}
+{% set work_size = max_drive_mem * 0.7 / 1048576 %}
+{% set cache_size = max_drive_mem * 0.25 / 1048576 %}
+NC_WORK_SIZE={{ work_size|int }}
+# The amount of disk space, in megabytes, that the NC is allowed to use
+# in its cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
+# the NC chooses automatically.  Values below 10 are ignored.
+NC_CACHE_SIZE={{ cache_size|int }}
 {% endif %}
-
+{% endfor %}
+{%endif%}
+{% if not found.found %}
+{% for drive in ansible_mounts %}
+{% if drive['mount'] == "/" %}
+{% set good_drive = drive %}
+{% set max_drive_mem = good_drive['size_available'] %}
+{% set work_size = max_drive_mem * 0.7 / 1048576 %}
+{% set cache_size = max_drive_mem * 0.25 / 1048576 %}
+NC_WORK_SIZE={{ work_size|int }}
+# The amount of disk space, in megabytes, that the NC is allowed to use
+# in its cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
+# the NC chooses automatically.  Values below 10 are ignored.
+NC_CACHE_SIZE={{ cache_size|int }}
+{% endif %}
+{% endfor %}
+{% endif %}
 
 # The number of disk-intensive operations that the NC is allowed to
 # perform at once.  A value of 1 serializes all disk-intensive operations.
@@ -233,11 +247,8 @@ VNET_PUBLICIPS="{% for range in pub_ips %}{{ range }} {% endfor %}"
 #VNET_SUBNET="192.168.0.0"
 #VNET_NETMASK="255.255.0.0"
 {% else %}
-{% for cluster in clusters %}
 VNET_SUBNET="{{ vnet_subnet }}"
 VNET_NETMASK="{{ vnet_netmask }}"
-{% endif %}
-{% endfor %}
 {% endif %}
 
 # The number of IP addresses to allocate to each security group.

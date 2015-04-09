@@ -7,9 +7,14 @@
   template: src=eucalyptus.conf.j2 dest={{ euca_conf_file_path }}
   tags:
   - euca_config
+  - nc
 
 - name: Remove default libvirt artifacts
   shell: virsh net-destroy default ; virsh net-undefine default
+  tags:
+  - nc
 
 - name: Restart libvirtd
   service: name=libvirtd state=restarted
+  tags:
+  - nc

@@ -20,8 +20,6 @@ NC Specific
 | managed_addrpernet | Yes | 32 | Multiple of 8 > 32
 | instance_dns_domain | Yes | eucalyptus.internal | Name for the DHCP search config (for Managed modes)
 | iface_name | Yes | None | The interface on which the bridge is
-| nc_work_size | No | 70% | Space on the disk for instances
-| nc_cache_size | No | 25% | Space on the disk for cached images
 | networking_mode | Yes | EDGE | Networking mode (EDGE recommended)
 | edge_using_private | No | True | Meta-Data using private addresses
 | partition | Yes | None | Name of the Availability Zone (cluster)
