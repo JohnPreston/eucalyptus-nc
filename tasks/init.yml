@@ -13,8 +13,28 @@
   shell: virsh net-destroy default ; virsh net-undefine default
   tags:
   - nc
+  ignore_errors: true
 
 - name: Restart libvirtd
   service: name=libvirtd state=restarted
+  tags:
+  - nc
+  ignore_errors: true
+
+- name: Restart network service to apply bridge settings
+  service: name=network state=restarted
+  tags:
+  - nc
+  - net_init
+  when:
+  - not "{{ hostvars[inventory_hostname]['ansible_br' + bridge_number|string] }}"
+
+- name: Get new info on the system
+  setup:
+  tags:
+  - nc
+
+- name: Display Bride info
+  debug: msg="{{hostvars[inventory_hostname]['ansible_br' +  bridge_number|string] }}"
   tags:
   - nc
