@@ -17,9 +17,11 @@ EUCA_USER="eucalyptus"
 {% if xms|int < 1 %}
 {% set xms = xmx %}
 {% endif %}
-{% if java_iface is defined%}
+{% if java_iface is defined %}
 {% set vnet = 'ansible_' + java_iface %}
+{% if hostvars[inventory_hostname][vnet] and hostvars[inventory_hostname][vnet]['ipv4'] is defined %}
 CLOUD_OPTS="--bind-addr={{  hostvars[inventory_hostname][vnet]['ipv4']['address'] }} -Xms{{ xms|int }}G -Xmx{{ xmx|int }}G"
+{% endif %}
 {% else %}
 CLOUD_OPTS="-Xms{{ xms|int }}G -Xmx{{ xmx|int }}G"
 {% endif %}
@@ -109,7 +111,7 @@ USE_VIRTIO_NET="1"
 # The number of virtual CPU cores that Eucalyptus is allowed to allocate
 # to instances.  The default value of 0 allows Eucalyptus to use all
 # CPU cores on the system.
-{% if inventory_hostname in groups['nc'] and cpu_overcommit is defined %}
+{% if cpu_overcommit is defined %}
 MAX_CORES="{{ ansible_processor_vcpus * cpu_overcommit }}"
 {% else %}
 #MAX_CORES=
@@ -117,7 +119,6 @@ MAX_CORES="{{ ansible_processor_vcpus * cpu_overcommit }}"
 # The amount of disk space, in megabytes, that the NC is allowed to use
 # in its work directory ($INSTANCE_PATH/eucalyptus/work).  By default
 # the NC chooses automatically.  Values below 10 are ignored.
-{% if inventory_hostname in groups['nc'] %}
 {% set found = { 'found' : False } %}
 {% for drive in ansible_mounts %}
 {% if drive['mount'] == "/var/lib/eucalyptus/instances" %}
@@ -163,10 +164,6 @@ NC_WORK_SIZE="{{ work_size|int }}"
 NC_CACHE_SIZE="{{ cache_size|int }}"
 {% endif %}
 {% endfor %}
-{% endif %}
-{% else %}
-#NC_WORK_SIZE=
-#NC_CACHE_SIZE=
 {% endif %}
 # The number of disk-intensive operations that the NC is allowed to
 # perform at once.  A value of 1 serializes all disk-intensive operations.
@@ -219,12 +216,16 @@ INSTANCE_PATH="/var/lib/eucalyptus/instances"
 # The networking mode in which to run.  The same mode must be specified
 # on all CCs and NCs in the entire cloud.  Valid values include EDGE,
 # MANAGED, and MANAGED-NOVLAN.
+{% if networking_mode is defined %}
 VNET_MODE="{{ networking_mode }}"
-{% if networking_mode == 'EDGE' %}
+{% else %}
+VNET_MODE="EDGE"
+{% endif %}
+{% if networking_mode is defined and networking_mode == 'EDGE' %}
 #
 # EDGE SPECIFIC OPTIONS
 #
-{% if edge_using_private %}
+{% if edge_using_private is defined and edge_using_private %}
 METADATA_USE_VM_PRIVATE="Y"
 {% else %}
 METADATA_USE_VM_PRIVATE="N"
@@ -233,7 +234,11 @@ METADATA_USE_VM_PRIVATE="N"
 # The name of the network interface that is on the same network as
 # the NCs. The default is "eth0".
 # Networking modes: Managed, Managed (No VLAN)
+{% if vnet_private is defined %}
 VNET_PRIVINTERFACE="{{ vnet_private }}"
+{% else %}
+VNET_PRIVINTERFACE="eth0"
+{% endif %}
 
 # On a CC, this is the name of the network interface that is connected
 # to the "public" network.  When tunnelling is enabled, this must be
@@ -243,13 +248,16 @@ VNET_PRIVINTERFACE="{{ vnet_private }}"
 # On an NC, this is the name of the network interface that is connected
 # to the same network as the CC.  The default is "eth0".
 # Networking modes: Edge, Managed
+{% if vnet_public is defined %}
 VNET_PUBINTERFACE="{{ vnet_public }}"
-
+{% else %}
+VNET_PUBINTERFACE="eth0"
+{% endif %}
 # On an NC, this is the name of the bridge interface to which instances'
 # network interfaces should attach.  A physical interface that can reach
 # the CC must be attached to this bridge.
 # Networking modes: Edge, Managed (No VLAN)
-{% if inventory_hostname in groups['nc'] and bridge_number is defined %}
+{% if bridge_number is defined %}
 VNET_BRIDGE="br{{ bridge_number }}"
 {% else %}
 VNET_BRIDGE=br0
@@ -258,19 +266,19 @@ VNET_BRIDGE=br0
 # A space-separated list of individual and/or hyphenated ranges of public
 # IP addresses to assign to instances.
 # Networking modes: Managed, Managed (No VLAN)
-{% if networking_mode == 'EDGE' %}
+{% if networking_mode is defined and networking_mode == 'EDGE' %}
 #VNET_PUBLICIPS="your-free-public-ip-1 your-free-public-ip-2 ..."
-{% else %}
+{% elif pub_ips is defined and networking_mode != 'EDGE' %}
 VNET_PUBLICIPS="{% for range in pub_ips %}{{ range }} {% endfor %}"
 {% endif %}
 
 # The address and network mask of the network the cloud should use for
 # instances' private IP addresses.
 # Networking modes: Managed, Managed (No VLAN)
-{% if networking_mode == 'EDGE' %}
+{% if networking_mode is defined and networking_mode == 'EDGE' %}
 #VNET_SUBNET="192.168.0.0"
 #VNET_NETMASK="255.255.0.0"
-{% else %}
+{% elif vnet_subnet is defined and vnet_netmask is defined %}
 VNET_SUBNET="{{ vnet_subnet }}"
 VNET_NETMASK="{{ vnet_netmask }}"
 {% endif %}
@@ -281,18 +289,18 @@ VNET_NETMASK="{{ vnet_netmask }}"
 # use, leaving VNET_ADDRSPERNET-11 IPs free for VMs to use for each
 # security group.
 # Networking modes: Managed, Managed (No VLAN)
-{% if networking_mode == 'EDGE' %}
+{% if networking_mode is defined and networking_mode == 'EDGE' %}
 #VNET_ADDRSPERNET="32"
-{% else %}
+{% elif managed_addrpernet is defined %}
 VNET_ADDRSPERNET="{{ managed_addrpernet }}"
 {% endif %}
 
 # The address of the DNS server to supply to instances in DHCP responses.
 # Networking modes: Managed, Managed (No VLAN). Moving forward,
 # this option will be deprecated in favor of the CLC property.
-{% if networking_mode == 'EDGE' %}
+{% if networking_mode is defined and networking_mode == 'EDGE' %}
 #VNET_DNS="your-dns-server-ip"
-{% else %}
+{% elif instance_dns_servers is defined %}
 VNET_DNS="{{ instance_dns_servers }}"
 {% endif %}
 
@@ -301,10 +309,12 @@ VNET_DNS="{{ instance_dns_servers }}"
 # and will be overridden by the CLC property. Moving forward, this option will
 # be deprecated in favor of the CLC property.
 # Networking modes: Managed, Managed (No VLAN)
-{% if networking_mode == 'EDGE' %}
-#VNET_DOMAINNAME="eucalyptus.internal"
-{% else %}
+{% if networking_mode is defined and networking_mode == 'EDGE' %}
+#VNET_DOMAINNAME="eucalyptus.interna"
+{% elif instance_dns_domain is defined %}
 VNET_DOMAINNAME="{{ instance_dns_domain }}"
+{% else %}
+#VNET_DOMAINNAME="eucalyptus.internal"
 {% endif %}
 
 # Set this to the IP address that other CCs can use to reach this CC
