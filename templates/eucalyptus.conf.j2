@@ -10,7 +10,19 @@ EUCA_USER="eucalyptus"
 
 # Extra options to pass to the eucalyptus-cloud process, such as log
 # levels, heap size, or other JVM flags.
-CLOUD_OPTS=""
+# levels, heap size, or other JVM flags.
+{% set max_mem = ansible_memtotal_mb %}
+{% set xmx = max_mem / 2048 %}
+{% set xms = max_mem / 3092 %}
+{% if xms|int < 1 %}
+{% set xms = xmx %}
+{% endif %}
+{% if java_iface is defined%}
+{% set vnet = 'ansible_' + java_iface %}
+CLOUD_OPTS="--bind-addr={{  hostvars[inventory_hostname][vnet]['ipv4']['address'] }} -Xms{{ xms|int }}G -Xmx{{ xmx|int }}G"
+{% else %}
+CLOUD_OPTS="-Xms{{ xms|int }}G -Xmx{{ xmx|int }}G"
+{% endif %}
 
 ###########################################################################
 # STORAGE CONTROLLER (SC) CONFIGURATION
@@ -97,10 +109,15 @@ USE_VIRTIO_NET="1"
 # The number of virtual CPU cores that Eucalyptus is allowed to allocate
 # to instances.  The default value of 0 allows Eucalyptus to use all
 # CPU cores on the system.
+{% if inventory_hostname in groups['nc'] and cpu_overcommit is defined %}
 MAX_CORES="{{ ansible_processor_vcpus * cpu_overcommit }}"
+{% else %}
+#MAX_CORES=
+{% endif %}
 # The amount of disk space, in megabytes, that the NC is allowed to use
 # in its work directory ($INSTANCE_PATH/eucalyptus/work).  By default
 # the NC chooses automatically.  Values below 10 are ignored.
+{% if inventory_hostname in groups['nc'] %}
 {% set found = { 'found' : False } %}
 {% for drive in ansible_mounts %}
 {% if drive['mount'] == "/var/lib/eucalyptus/instances" %}
@@ -109,11 +126,11 @@ MAX_CORES="{{ ansible_processor_vcpus * cpu_overcommit }}"
 {% set max_drive_mem = good_drive['size_available'] %}
 {% set work_size = max_drive_mem * 0.7 / 1048576 %}
 {% set cache_size = max_drive_mem * 0.25 / 1048576 %}
-NC_WORK_SIZE={{ work_size|int }}
+NC_WORK_SIZE="{{ work_size|int }}"
 # The amount of disk space, in megabytes, that the NC is allowed to use
 # in its cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
 # the NC chooses automatically.  Values below 10 are ignored.
-NC_CACHE_SIZE={{ cache_size|int }}
+NC_CACHE_SIZE="{{ cache_size|int }}"
 {% endif %}
 {% endfor %}
 {% if not found.found %}
@@ -124,11 +141,11 @@ NC_CACHE_SIZE={{ cache_size|int }}
 {% set max_drive_mem = good_drive['size_available'] %}
 {% set work_size = max_drive_mem * 0.7 / 1048576 %}
 {% set cache_size = max_drive_mem * 0.25 / 1048576 %}
-NC_WORK_SIZE={{ work_size|int }}
+NC_WORK_SIZE="{{ work_size|int }}"
 # The amount of disk space, in megabytes, that the NC is allowed to use
 # in its cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
 # the NC chooses automatically.  Values below 10 are ignored.
-NC_CACHE_SIZE={{ cache_size|int }}
+NC_CACHE_SIZE="{{ cache_size|int }}"
 {% endif %}
 {% endfor %}
 {%endif%}
@@ -139,15 +156,18 @@ NC_CACHE_SIZE={{ cache_size|int }}
 {% set max_drive_mem = good_drive['size_available'] %}
 {% set work_size = max_drive_mem * 0.7 / 1048576 %}
 {% set cache_size = max_drive_mem * 0.25 / 1048576 %}
-NC_WORK_SIZE={{ work_size|int }}
+NC_WORK_SIZE="{{ work_size|int }}"
 # The amount of disk space, in megabytes, that the NC is allowed to use
 # in its cache directory ($INSTANCE_PATH/eucalyptus/cache).  By default
 # the NC chooses automatically.  Values below 10 are ignored.
-NC_CACHE_SIZE={{ cache_size|int }}
+NC_CACHE_SIZE="{{ cache_size|int }}"
 {% endif %}
 {% endfor %}
 {% endif %}
-
+{% else %}
+#NC_WORK_SIZE=
+#NC_CACHE_SIZE=
+{% endif %}
 # The number of disk-intensive operations that the NC is allowed to
 # perform at once.  A value of 1 serializes all disk-intensive operations.
 # The default value is 4.
@@ -229,7 +249,11 @@ VNET_PUBINTERFACE="{{ vnet_public }}"
 # network interfaces should attach.  A physical interface that can reach
 # the CC must be attached to this bridge.
 # Networking modes: Edge, Managed (No VLAN)
+{% if inventory_hostname in groups['nc'] and bridge_number is defined %}
 VNET_BRIDGE="br{{ bridge_number }}"
+{% else %}
+VNET_BRIDGE=br0
+{% endif %}
 
 # A space-separated list of individual and/or hyphenated ranges of public
 # IP addresses to assign to instances.
