@@ -41,3 +41,8 @@
   - eucanetd
   tags:
   - packages
+
+- name: Update host info
+  setup:
+  tags:
+    - nc
